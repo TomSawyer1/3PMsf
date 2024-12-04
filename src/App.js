@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Main from './components/Main';
 import Listcategories from './components/Listcategories'; 
 import Listproduits from './components/Listproduits'; 
 
@@ -12,7 +13,7 @@ const App = () => {
         <Routes>
           <Route path="/categories" element={<Listcategories />} />
           <Route path="/produits" element={<Listproduits />} />
-          <Route path="/" element={<div>Bienvenue sur la page d'accueil</div>} />
+          <Route path="/" element={<Main /> } />
         </Routes>
       </main>
     </Router>

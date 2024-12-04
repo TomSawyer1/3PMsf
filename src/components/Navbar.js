@@ -8,7 +8,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <a href="/" className="text-2xl font-bold">
-            MonSite
+            3PM's
           </a>
           <div className="hidden md:flex space-x-4">
             <a href="/categories" className="hover:bg-blue-700 px-3 py-2 rounded-md">

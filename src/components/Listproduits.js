@@ -65,7 +65,7 @@ const Listproduits = () => {
   if (error) return <div className="text-center text-red-500">{error}</div>;
 
   return (
-    <div className="p-4">
+    <div className="mx-56 p-4">
       <h1 className="text-2xl font-bold mb-4">Liste des Produits</h1>
 
       {/* Barre de recherche */}
