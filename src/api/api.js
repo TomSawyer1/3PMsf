@@ -36,3 +36,17 @@ export const deleteData = async (endpoint) => {
     throw error;
   }
 };
+
+// put les données ( modifier )
+
+export const updateData = async (endpoint, data) => {
+  try {
+    const response = await axios.put(`${BASE_URL}${endpoint}`, data, {
+      headers: { "Content-Type": "application/json" },
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Erreur lors de la requête PUT sur ${endpoint} :`, error);
+    throw error;
+  }
+};
