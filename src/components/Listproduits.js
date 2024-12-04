@@ -1,39 +1,48 @@
 import React, { useEffect, useState } from "react";
-import { fetchData } from "../api/api";
+import { fetchData, postData, updateData, deleteData } from "../api/api";
 
 const Listproduits = () => {
-  //jaffiche all produit
-  const [produits, setProduits] = useState([]); // Liste complète des produits deppuis la bdd
-// jaffiche quelque chose de filtrer
-  const [filteredProduits, setFilteredProduits] = useState([]); // Produits filtrés pour recherche et tri
+  const [produits, setProduits] = useState([]);
+  const [filteredProduits, setFilteredProduits] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  // Formulaire pour ajouter ou modifier un produit
+  const [productForm, setProductForm] = useState({
+    id: null,
+    name: "",
+    description: "",
+    price: "",
+    categoryId: "",
+  });
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortKey, setSortKey] = useState("price");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
-  const [loading, setLoading] = useState(true); // Indicateur de chargement
-  const [error, setError] = useState(null); // Gestion des erreurs
-
-
-  const [searchTerm, setSearchTerm] = useState(""); // Terme de recherche de l'user
-      // sa recherche   --- recuperation user
-
-
-  const [sortKey, setSortKey] = useState("price"); // Clé de tri
-  const [currentPage, setCurrentPage] = useState(1); // Page actuelle pour la pagination
-  const itemsPerPage = 5; // 5 elements dans une page
-
-  // Charger les produits depuis l'API
+  // Charger les produits et catégories depuis l'API
   useEffect(() => {
-    fetchData("/produits")
-      .then((response) => {
-        setProduits(response);
-        setFilteredProduits(response);
+    const fetchAllData = async () => {
+      try {
+        setLoading(true);
+        const produitsResponse = await fetchData("/produits");
+        const categoriesResponse = await fetchData("/categories");
+
+        setProduits(produitsResponse);
+        setFilteredProduits(produitsResponse);
+        setCategories(categoriesResponse);
+
         setLoading(false);
-      })
-      .catch((error) => {
-        setError("Erreur lors de la récupération des produits");
+      } catch (error) {
+        setError("Erreur lors de la récupération des données");
         console.error(error);
         setLoading(false);
-      });
+      }
+    };
+
+    fetchAllData();
   }, []);
 
   // Filtrer les produits par recherche
@@ -41,9 +50,8 @@ const Listproduits = () => {
     const filtered = produits.filter((produit) =>
       produit.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
     setFilteredProduits(filtered);
-    setCurrentPage(1); // Revenir à la première page après filtrage
+    setCurrentPage(1);
   }, [searchTerm, produits]);
 
   // Trier les produits
@@ -60,7 +68,75 @@ const Listproduits = () => {
   );
   const totalPages = Math.ceil(sortedProduits.length / itemsPerPage);
 
-  // Affichage en cas de chargement
+  // Ajouter ou mettre à jour un produit
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    const { id, name, description, price, categoryId } = productForm;
+
+    if (!name || !description || !price || !categoryId) {
+      alert("Tous les champs sont requis.");
+      return;
+    }
+
+    try {
+      if (id) {
+        // Mettre à jour
+        const updatedProduct = await updateData(`/produits/${id}`, {
+          name,
+          description,
+          price,
+          category_id: categoryId,
+        });
+        setProduits((prev) =>
+          prev.map((prod) => (prod.id === id ? updatedProduct : prod))
+        );
+      } else {
+        // Créer
+        const newProduct = await postData("/produits", {
+          name,
+          description,
+          price,
+          category_id: categoryId,
+        });
+        setProduits((prev) => [...prev, newProduct]);
+      }
+
+      // Réinitialiser le formulaire
+      setProductForm({
+        id: null,
+        name: "",
+        description: "",
+        price: "",
+        categoryId: "",
+      });
+    } catch (error) {
+      console.error("Erreur lors de la soumission du formulaire :", error);
+    }
+  };
+
+  // Préparer le formulaire pour la mise à jour
+  const handleEdit = (produit) => {
+    setProductForm({
+      id: produit.id,
+      name: produit.name,
+      description: produit.description,
+      price: produit.price,
+      categoryId: produit.categories.id,
+    });
+  };
+
+  // Supprimer un produit
+  const handleDelete = async (id) => {
+    if (!window.confirm("Voulez-vous vraiment supprimer ce produit ?")) return;
+
+    try {
+      await deleteData(`/produits/${id}`);
+      setProduits((prev) => prev.filter((prod) => prod.id !== id));
+    } catch (error) {
+      console.error("Erreur lors de la suppression du produit :", error);
+    }
+  };
+
   if (loading) return <div className="text-center mt-4">Chargement...</div>;
   if (error) return <div className="text-center text-red-500">{error}</div>;
 
@@ -68,34 +144,72 @@ const Listproduits = () => {
     <div className="mx-56 p-4">
       <h1 className="text-2xl font-bold mb-4">Liste des Produits</h1>
 
-      {/* Barre de recherche */}
-      <div className="mb-4">
+      {/* Formulaire */}
+      <form onSubmit={handleFormSubmit} className="mb-4">
         <input
           type="text"
-          className="p-2 border border-gray-300 rounded w-full"
-          placeholder="Rechercher un produit..."
-          value={searchTerm} // ce que l'user a tapez
-          onChange={(e) => setSearchTerm(e.target.value)} // lorsque la valeur change on appel la fonction
+          placeholder="Nom du produit"
+          value={productForm.name}
+          onChange={(e) =>
+            setProductForm((prev) => ({ ...prev, name: e.target.value }))
+          }
+          className="p-2 border border-gray-300 rounded w-full mb-2"
         />
-      </div>
-
-      {/* Menu de tri */}
-      <div className="mb-4">
-        <label htmlFor="sort" className="mr-2 font-medium">Trier par :</label>
+        <textarea
+          placeholder="Description"
+          value={productForm.description}
+          onChange={(e) =>
+            setProductForm((prev) => ({ ...prev, description: e.target.value }))
+          }
+          className="p-2 border border-gray-300 rounded w-full mb-2"
+        />
+        <input
+          type="number"
+          placeholder="Prix"
+          value={productForm.price}
+          onChange={(e) =>
+            setProductForm((prev) => ({ ...prev, price: e.target.value }))
+          }
+          className="p-2 border border-gray-300 rounded w-full mb-2"
+        />
         <select
-          id="sort"
-          className="p-2 border border-gray-300 rounded"
-          value={sortKey}
-          onChange={(e) => setSortKey(e.target.value)}
+          value={productForm.categoryId}
+          onChange={(e) =>
+            setProductForm((prev) => ({ ...prev, categoryId: e.target.value }))
+          }
+          className="p-2 border border-gray-300 rounded w-full mb-2"
         >
-          <option value="price">Prix</option>
-          <option value="name">Nom</option>
+          <option value="">Choisir une catégorie</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
         </select>
-      </div>
+        <button
+          type="submit"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          {productForm.id ? "Mettre à jour" : "Ajouter"}
+        </button>
+      </form>
+
+      {/* Barre de recherche */}
+      <input
+        type="text"
+        className="p-2 border border-gray-300 rounded w-full mb-4"
+        placeholder="Rechercher un produit..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
 
       {/* Tableau des produits */}
       {paginatedProduits.length > 0 ? (
-        <ProductsTable produits={paginatedProduits} />
+        <ProductsTable
+          produits={paginatedProduits}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       ) : (
         <div className="text-gray-500">Aucun produit disponible.</div>
       )}
@@ -122,8 +236,7 @@ const Listproduits = () => {
   );
 };
 
-// Composant réutilisable pour afficher le tableau des produits
-const ProductsTable = ({ produits }) => {
+const ProductsTable = ({ produits, onEdit, onDelete }) => {
   return (
     <table className="min-w-full border-collapse border border-gray-300 mt-4">
       <thead>
@@ -131,6 +244,7 @@ const ProductsTable = ({ produits }) => {
           <th className="border border-gray-300 px-4 py-2">Nom</th>
           <th className="border border-gray-300 px-4 py-2">Description</th>
           <th className="border border-gray-300 px-4 py-2">Prix</th>
+          <th className="border border-gray-300 px-4 py-2">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -141,6 +255,20 @@ const ProductsTable = ({ produits }) => {
               {produit.description}
             </td>
             <td className="border border-gray-300 px-4 py-2">{produit.price} €</td>
+            <td className="border border-gray-300 px-4 py-2">
+              <button
+                className="text-blue-500 hover:underline mr-2"
+                onClick={() => onEdit(produit)}
+              >
+                Modifier
+              </button>
+              <button
+                className="text-red-500 hover:underline"
+                onClick={() => onDelete(produit.id)}
+              >
+                Supprimer
+              </button>
+            </td>
           </tr>
         ))}
       </tbody>
