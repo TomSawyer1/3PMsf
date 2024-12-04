@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchData, postData, deleteData } from '../api/api';
+import { fetchData, postData, deleteData, updateData  } from '../api/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Listcategories = () => {
@@ -10,6 +10,9 @@ const Listcategories = () => {
   const [error, setError] = useState(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [updatedCategoryName, setUpdatedCategoryName] = useState('');
+
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -59,7 +62,7 @@ const Listcategories = () => {
       console.error('Erreur lors de l\'ajout de la catégorie :', error);
     }
   };
-
+// delelete
   const handleDeleteCategory = async (categoryId) => {
     if (!window.confirm('Voulez-vous vraiment supprimer cette catégorie et tous ses produits ?')) {
       return;
@@ -79,6 +82,32 @@ const Listcategories = () => {
   if (loading) return <div className="text-center mt-4">Chargement...</div>;
   if (error) return <div className="text-center text-red-500">{error}</div>;
 
+  // updte categorie
+
+  const handleUpdateCategory = async (categoryId) => {
+    if (!updatedCategoryName.trim()) {
+      alert('Le nom de la catégorie est requis.');
+      return;
+    }
+  
+    try {
+      const updatedCategory = await updateData(`/categories/${categoryId}`, {
+        name: updatedCategoryName,
+      });
+  
+      setCategories(categories.map((category) =>
+        category.id === categoryId ? updatedCategory : category
+      ));
+  
+      // Réinitialiser l'édition
+      setEditingCategoryId(null);
+      setUpdatedCategoryName('');
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour de la catégorie :", error);
+    }
+  };
+
+  
   return (
     <div className="mx-56 p-4">
       <h1 className="text-2xl font-bold mb-4">Liste des Catégories</h1>
@@ -108,50 +137,91 @@ const Listcategories = () => {
       {/* Liste des catégories */}
       <ul className="space-y-4">
         <AnimatePresence>
-          {categories.map((category) => (
-            <motion.li
-              key={category.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="p-4 bg-gray-100 rounded shadow hover:bg-gray-200"
+        {categories.map((category) => (
+  <motion.li
+    key={category.id}
+    initial={{ opacity: 0, x: -20 }}
+    animate={{ opacity: 1, x: 0 }}
+    exit={{ opacity: 0, x: -20 }}
+    transition={{ duration: 0.3 }}
+    className="p-4 bg-gray-100 rounded shadow hover:bg-gray-200"
+  >
+    <div className="flex justify-between items-center">
+      {editingCategoryId === category.id ? (
+        // Formulaire d'édition
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            className="p-2 border border-gray-300 rounded"
+            value={updatedCategoryName}
+            onChange={(e) => setUpdatedCategoryName(e.target.value)}
+          />
+          <button
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            onClick={() => handleUpdateCategory(category.id)}
+          >
+            Enregistrer
+          </button>
+          <button
+            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            onClick={() => {
+              setEditingCategoryId(null);
+              setUpdatedCategoryName('');
+            }}
+          >
+            Annuler
+          </button>
+        </div>
+      ) : (
+        // Affichage normal
+        <>
+          <span
+            className="text-lg font-medium cursor-pointer"
+            onClick={() => handleCategoryClick(category.id)}
+          >
+            {category.name}
+          </span>
+          <div className="flex gap-4">
+            <button
+              className="text-blue-500 hover:underline"
+              onClick={() => {
+                setEditingCategoryId(category.id);
+                setUpdatedCategoryName(category.name);
+              }}
             >
-              <div className="flex justify-between items-center">
-                <span
-                  className="text-lg font-medium cursor-pointer"
-                  onClick={() => handleCategoryClick(category.id)}
-                >
-                  {category.name}
-                </span>
-                <button
-                  className="text-red-500 hover:underline"
-                  onClick={() => handleDeleteCategory(category.id)}
-                >
-                  Supprimer
-                </button>
-              </div>
+              Modifier
+            </button>
+            <button
+              className="text-red-500 hover:underline"
+              onClick={() => handleDeleteCategory(category.id)}
+            >
+              Supprimer
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+    {/* Produits de la catégorie sélectionnée */}
+    <AnimatePresence>
+      {selectedCategoryId === category.id && (
+        <motion.div
+          className="mt-4"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {filteredProduits.length > 0 ? (
+            <ProductsTable produits={filteredProduits} />
+          ) : (
+            <div className="text-gray-500">Aucun produit disponible.</div>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </motion.li>
+))}
 
-              {/* Produits de la catégorie sélectionnée */}
-              <AnimatePresence>
-                {selectedCategoryId === category.id && (
-                  <motion.div
-                    className="mt-4"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {filteredProduits.length > 0 ? (
-                      <ProductsTable produits={filteredProduits} />
-                    ) : (
-                      <div className="text-gray-500">Aucun produit disponible.</div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.li>
-          ))}
         </AnimatePresence>
       </ul>
     </div>
